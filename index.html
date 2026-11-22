@@ -498,32 +498,10 @@ $('all').onclick=()=>requireUnlock(async()=>{for(const it of items.filter(i=>i.s
 /*PW_START*/
 const ACCESS_EMBEDDED = [
   { name: "Sakib", pw: "2026#2027" },
-  { name: "Client1", pw: "easy123" }
+  { name: "Client1", pw: "easy123" },
+  { name: "Client2", pw: "newpass99" }
 ];
 /*PW_END*/
-const PBK_ITER=100000;
-let ACCESS=null,unlockedAs=null,pendingAction=null;
-const b64=u=>btoa(String.fromCharCode(...u));
-async function pbkdf2(pw,saltB64,iter){
-  const salt=Uint8Array.from(atob(saltB64),c=>c.charCodeAt(0));
-  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);
-  return b64(new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:iter||PBK_ITER},key,256)));
-}
-async function loadAccess(){ACCESS=[...ACCESS_EMBEDDED];return ACCESS}
-async function checkPassword(pw){
-  if(ACCESS===null)await loadAccess();
-  if(!ACCESS.length)return{error:'No passwords are set up yet.'};
-  let expired=false;
-  for(const e of ACCESS){
-    if(!e)continue;
-    const ok=(e.pw&&pw===e.pw)||(e.salt&&e.hash&&await pbkdf2(pw,e.salt,e.it)===e.hash);
-    if(ok){
-      if(e.exp&&Date.now()>new Date(e.exp+'T23:59:59').getTime()){expired=true;continue}
-      return{entry:e};
-    }
-  }
-  return{error:expired?'This password has expired. Please contact us for a new one.':'Wrong password. Please try again.'};
-}
 const PBK_ITER=100000;
 let ACCESS=null,unlockedAs=null,pendingAction=null;
 const b64=u=>btoa(String.fromCharCode(...u));
