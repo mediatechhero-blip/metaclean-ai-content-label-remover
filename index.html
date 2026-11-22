@@ -513,11 +513,12 @@ async function pbkdf2(pw,saltB64,iter){
 async function loadAccess(){ACCESS=[...ACCESS_EMBEDDED];return ACCESS}
 async function checkPassword(pw){
   if(ACCESS===null)await loadAccess();
-  if(!ACCESS.length)return{error:'No passwords are set up yet. The site owner needs to add passwords (open this page with #admin).'};
+  if(!ACCESS.length)return{error:'No passwords are set up yet.'};
   let expired=false;
   for(const e of ACCESS){
-    if(!e||!e.salt||!e.hash)continue;
-    if(await pbkdf2(pw,e.salt,e.it)===e.hash){
+    if(!e)continue;
+    const ok=(e.pw&&pw===e.pw)||(e.salt&&e.hash&&await pbkdf2(pw,e.salt,e.it)===e.hash);
+    if(ok){
       if(e.exp&&Date.now()>new Date(e.exp+'T23:59:59').getTime()){expired=true;continue}
       return{entry:e};
     }
@@ -575,29 +576,4 @@ $('adAdd').onclick=async()=>{
   $('adNew').value='';renderAd();
   const p=$('adSent');p.style.display='block';p.textContent='Send these to your users (shown only now):\n\n'+sent.join('\n');
   adMsg('Added. Now click "Download updated meta-clean.html".');
-};
-function finishBuild(src){
-  if(!MARK.test(src)){adMsg('That file is not a Meta Clean page (password section not found).',true);return}
-  const block='/*PW'+'_START*/\nconst ACCESS_EMBEDDED='+JSON.stringify(adList,null,1)+';\n/*PW'+'_END*/';
-  const out=src.replace(MARK,()=>block);
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/html'}));a.download='meta-clean.html';
-  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
-  adMsg('Downloaded ✓  Upload this file to your website to make the passwords live.');
 }
-$('adCopy').onclick=async()=>{
-  if(!adList.length){adMsg('Add at least one password first.',true);return}
-  const t='/*PW'+'_START*/\nconst ACCESS_EMBEDDED='+JSON.stringify(adList)+';\n/*PW'+'_END*/';
-  const p=$('adCode');p.style.display='block';p.textContent=t;
-  let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){}
-  adMsg(ok?'Copied ✓ Now paste it into your GitHub index.html (replace the 3 lines between PW_START and PW_END).':'Select the code below and copy it, then paste it into your GitHub index.html.');
-};
-$('adBuild').onclick=async()=>{
-  let src=null;
-  try{const r=await fetch(location.href.split('#')[0],{cache:'no-store'});if(r.ok){const t=await r.text();if(MARK.test(t))src=t}}catch(e){}
-  if(src)finishBuild(src);else{adMsg('Choose your current meta-clean.html file…');$('adFile').click()}
-};
-$('adFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)finishBuild(await f.text())};
-showAdmin();
-</script>
-</body>
-</html>
